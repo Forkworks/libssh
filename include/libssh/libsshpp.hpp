@@ -53,6 +53,7 @@
 
 #include <libssh/libssh.h>
 #include <libssh/server.h>
+#include <libssh/sftp.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -125,6 +126,8 @@ private:
  */
 class Session {
   friend class Channel;
+  friend class Scp;
+  friend class Sftp;
 public:
   Session(){
     c_session=ssh_new();
@@ -394,6 +397,7 @@ private:
  */
 class Channel {
   friend class Session;
+  friend class Sftp;
 public:
   Channel(Session &session){
     channel=ssh_channel_new(session.getCSession());
@@ -588,6 +592,9 @@ private:
   ssh_session getCSession(){
     return session->getCSession();
   }
+  ssh_channel getCChannel(){
+      return channel;
+  }
   Channel (Session &session, ssh_channel c_channel){
     this->channel=c_channel;
     this->session=&session;
@@ -607,7 +614,125 @@ inline Channel *Session::acceptForward(int timeout_ms){
     Channel *newchan = new Channel(*this,forward);
     return newchan;
   }
+  
+class Scp {
+public: 
+        Scp(Session &sesion, int mode, const char* location){
+            this->session=&sesion;
+            c_scp = ssh_scp_new(sesion.getCSession(), mode, location);
+        }
 
+        ~Scp(){
+            ssh_scp_free(c_scp);
+            c_scp = NULL;
+        }
+
+        void_throwable close(){
+            ssh_throw(ssh_scp_close(c_scp));
+            return_throwable;
+        }
+
+        void_throwable init(){
+            ssh_throw(ssh_scp_init(c_scp));
+            return_throwable;
+        }
+
+        void_throwable pushFile(const char* filename, size_t size, int mode) {
+            ssh_throw(ssh_scp_push_file(c_scp, filename, size, mode));
+            return_throwable;
+        }
+
+        void_throwable write(const void* buffer, size_t len) {
+            int ret = ssh_scp_write(c_scp, buffer, len);
+            ssh_throw(ret);
+            return_throwable;
+        }
+
+        bool acceptRequest() {
+            return (ssh_scp_accept_request(c_scp) != 0);
+        }
+
+
+
+private:
+        ssh_scp c_scp;
+        Session* session;
+        /* No copy and no = operator
+        Scp(const Scp &);
+        Scp &operator=(const Scp &);*/
+        ssh_session getCSession(){
+          return session->getCSession();
+        }
+};
+
+class Sftp {
+public:
+        Sftp(Session &sesion){
+            this->session=&sesion;
+            c_sftp = sftp_new(sesion.getCSession());
+        }
+
+        Sftp(Session &sesion, Channel &channel){
+            this->session=&sesion;
+            this->channel=&channel;
+            c_sftp = sftp_new_channel(sesion.getCSession(), channel.getCChannel());
+        }
+
+        ~Sftp(){
+            sftp_free(c_sftp);
+            c_sftp = NULL;
+        }
+
+        void_throwable init(){
+            ssh_throw(sftp_init(c_sftp));
+            return_throwable;
+        }
+
+        sftp_dir openDir(const char* location){
+            return sftp_opendir(c_sftp, location);
+        }
+
+        sftp_attributes readDir(sftp_dir dir){
+            return sftp_readdir(c_sftp, dir);
+        }
+
+        int isEofDir(sftp_dir dir){
+            return sftp_dir_eof(dir);
+        }
+
+        void_throwable closeDir(sftp_dir dir){
+            ssh_throw(sftp_closedir(dir));
+            return_throwable;
+        }
+
+        void freeAttributes(sftp_attributes file){
+            sftp_attributes_free(file);
+            return;
+        }
+
+        sftp_file openFile(const char* file, int accesstype, mode_t mode){
+            return sftp_open(c_sftp, file, accesstype, mode);
+        }
+
+        ssize_t readFile(sftp_file file, void* buf, size_t count){
+            return sftp_read(file, buf, count);
+        }
+
+        int closeFile(sftp_file file){
+            return sftp_close(file);
+        }
+
+private:
+        sftp_session c_sftp;
+        Session* session;
+        Channel* channel;
+        /* No copy and no = operator
+        Scp(const Scp &);
+        Scp &operator=(const Scp &);*/
+        ssh_session getCSession(){
+          return session->getCSession();
+        }
+};
 } // namespace ssh
 
 /** @} */
