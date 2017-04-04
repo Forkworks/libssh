@@ -490,7 +490,7 @@ public:
     /* handle int overflow */
     if(count > 0x7fffffff)
       count = 0x7fffffff;
-    err=ssh_channel_read_timeout(channel,dest,count,is_stderr,-1);
+    err=ssh_channel_read_timeout(channel,dest,(uint32_t) count,is_stderr,-1);
     ssh_throw(err);
     return err;
   }
@@ -499,7 +499,7 @@ public:
     /* handle int overflow */
     if(count > 0x7fffffff)
       count = 0x7fffffff;
-    err=ssh_channel_read_timeout(channel,dest,count,false,timeout);
+    err=ssh_channel_read_timeout(channel,dest,(uint32_t) count,false,timeout);
     ssh_throw(err);
     return err;
   }
@@ -508,7 +508,7 @@ public:
     /* handle int overflow */
     if(count > 0x7fffffff)
       count = 0x7fffffff;
-    err=ssh_channel_read_timeout(channel,dest,count,is_stderr,timeout);
+    err=ssh_channel_read_timeout(channel,dest,(uint32_t) count,is_stderr,timeout);
     ssh_throw(err);
     return err;
   }
@@ -517,7 +517,7 @@ public:
     /* handle int overflow */
     if(count > 0x7fffffff)
       count = 0x7fffffff;
-    err=ssh_channel_read_nonblocking(channel,dest,count,is_stderr);
+    err=ssh_channel_read_nonblocking(channel,dest,(uint32_t) count,is_stderr);
     ssh_throw(err);
     return err;
   }
@@ -581,9 +581,9 @@ public:
   int write(const void *data, size_t len, bool is_stderr=false){
     int ret;
     if(is_stderr){
-      ret=ssh_channel_write_stderr(channel,data,len);
+      ret=ssh_channel_write_stderr(channel,data,(uint32_t) len);
     } else {
-      ret=ssh_channel_write(channel,data,len);
+      ret=ssh_channel_write(channel,data,(uint32_t) len);
     }
     ssh_throw(ret);
     return ret;
